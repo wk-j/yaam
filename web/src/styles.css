@@ -1352,14 +1352,6 @@ input:disabled {
     max-width: 90px;
   }
 }
-.status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.err-mark {
-  display: inline-flex;
-}
 .log-foot {
   display: flex;
   gap: 10px;

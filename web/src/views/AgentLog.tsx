@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { baseName, fmtCount, fmtDateTime, fmtDuration, fmtTime } from '../format'
-import { IconAlert, IconChevronRight, IconChevronsDown } from '../icons'
+import { IconChevronRight, IconChevronsDown } from '../icons'
 import { useLog } from '../live'
 import { CELL_SQL_MAX, SqlBlock, SqlText } from '../sql'
 import type { AgentLogEntry, AgentLogStatus } from '../types'
@@ -137,11 +137,8 @@ export function AgentLog({ limit }: { limit: number }) {
                   </div>
                 </td>
                 <td className="nowrap">
-                  <span className="status-cell">
-                    <span key={e.status} className={`pill ${STATUS_CLASS[e.status]}`} title={note || undefined}>
-                      {STATUS_LABEL[e.status]}
-                    </span>
-                    {e.error && <ErrorMark error={e.error} muted={e.status === 'cancelled'} />}
+                  <span key={e.status} className={`pill ${STATUS_CLASS[e.status]}`} title={note || undefined}>
+                    {STATUS_LABEL[e.status]}
                   </span>
                 </td>
                 <td className="nowrap">{fmtDuration(e.durationMs)}</td>
@@ -159,15 +156,6 @@ export function AgentLog({ limit }: { limit: number }) {
         {fmtCount(limit)} entries. Click a row for its details.
       </div>
     </>
-  )
-}
-
-// ErrorMark flags a log row that ended in an error; the row's details show it in full.
-export function ErrorMark({ error, muted = false }: { error: string; muted?: boolean }) {
-  return (
-    <span className={`err-mark${muted ? ' muted' : ' err'}`} role="img" aria-label={`Error: ${error}`} title={error}>
-      <IconAlert size={14} />
-    </span>
   )
 }
 

@@ -2,7 +2,7 @@ import { baseName, fmtCount, fmtDateTime, fmtDuration, fmtTime } from '../format
 import { useLog } from '../live'
 import { CELL_SQL_MAX, SqlBlock, SqlText } from '../sql'
 import type { ExecutionLogEntry } from '../types'
-import { ErrorMark, LogFooter, LogRow } from './AgentLog'
+import { LogFooter, LogRow } from './AgentLog'
 
 export function ExecutionLog({ limit }: { limit: number }) {
   const log = useLog<ExecutionLogEntry>('/api/execution-log', 'execution-log')
@@ -83,9 +83,8 @@ export function ExecutionLog({ limit }: { limit: number }) {
               <td className="nowrap">{e.rows == null ? '—' : fmtCount(e.rows)}</td>
               <td className="nowrap">
                 {e.error ? (
-                  <span className="status-cell">
-                    <span className="pill fail">error</span>
-                    <ErrorMark error={e.error} />
+                  <span className="pill fail" title={e.error}>
+                    error
                   </span>
                 ) : (
                   <span className="pill run">ok</span>
