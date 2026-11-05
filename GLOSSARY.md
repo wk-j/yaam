@@ -33,7 +33,7 @@ The record of all SQL run on a database through yaam for a User or an Agent, inc
 _Avoid_: history, query log, SQL executable log ("executable" means runnable, not run), transaction log
 
 **Read**:
-A statement whose type only looks at data and is on yaam's short list of such types: a SELECT with no locking clause and no data-changing WITH, SHOW, or EXPLAIN without ANALYZE.
+A statement whose type only looks at data and is on yaam's short list of such types: a SELECT with no locking clause, no INTO and no data-changing WITH, SHOW, or EXPLAIN without ANALYZE.
 _Avoid_: query (a Write is a query too), safe statement
 
 **Write**:

@@ -11,8 +11,8 @@ that a statement whose type reads but whose effect writes runs without Approval:
 which changes data, such as `SELECT archive_old_orders()` over a function that deletes rows, or
 `SELECT nextval('order_seq')`, counts as a Read.
 
-The list yaam keeps is of Reads, not of Writes: a `SELECT` with no locking clause and no data-changing `WITH`,
-`SHOW`, and `EXPLAIN` without `ANALYZE`. Every other statement is a Write, including `CALL`, `DO`,
+The list yaam keeps is of Reads, not of Writes: a `SELECT` with no locking clause, no `INTO` and no data-changing
+`WITH`, `SHOW`, and `EXPLAIN` without `ANALYZE`. Every other statement is a Write, including `CALL`, `DO`,
 `EXPLAIN ANALYZE`, `COPY`, `SET`, `LOCK` and any statement type yaam does not recognise, so a misjudged statement
 costs the User one Approval rather than data. A Request needs Approval when any one of its statements is a Write.
 A Request that starts or ends a transaction, such as `SELECT 1; COMMIT; DELETE ...`, never reaches Approval: it is

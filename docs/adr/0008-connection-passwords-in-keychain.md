@@ -17,3 +17,8 @@ contains a password, following tantalum's
   environment, so every secret must be listed when yaam starts, and adding a Connection means restarting yaam,
   which cuts every Agent waiting for Approval.
 - PostgreSQL's `~/.pg_service.conf` and `~/.pgpass`: rejected; the password sits in a plain-text file.
+
+## Consequences
+
+- yaam reads the password back with `security find-generic-password -w`, which prints a password holding anything
+  outside printable ASCII as hex, so the web UI accepts only printable ASCII passwords.
