@@ -16,6 +16,7 @@ import {
   IconTrash,
 } from '../icons'
 import type { Connection, SslMode } from '../types'
+import { followRename } from '../prefs'
 
 const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/
 const SSLMODES: SslMode[] = ['disable', 'require', 'verify-ca', 'verify-full']
@@ -183,13 +184,17 @@ function ConnectionDialog({
   const [timeout, setTimeoutSecs] = useState(String(existing?.agentTimeoutSeconds ?? 30))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // The name the Connection has in yaam now; it changes once a rename succeeds,
+  // so a retry after a failed save does not rename again.
+  const [savedName, setSavedName] = useState<string | null>(existing?.name ?? null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const portN = Number(port)
     const timeoutN = Number(timeout)
     if (!NAME_RE.test(name)) return setError('Name: lowercase letters, digits, "-" and "_", starting with a letter or digit.')
-    if (!existing && taken.includes(name)) return setError(`A Connection named ${name} already exists.`)
+    const renameFrom = savedName !== null && name !== savedName ? savedName : null
+    if ((savedName === null || renameFrom !== null) && taken.includes(name)) return setError(`A Connection named ${name} already exists.`)
     if (!host.trim()) return setError('Host is required.')
     if (!Number.isInteger(portN) || portN < 1 || portN > 65535) return setError('Port must be 1–65535.')
     if (!database.trim()) return setError('Database is required.')
@@ -211,6 +216,13 @@ function ConnectionDialog({
     setBusy(true)
     setError('')
     try {
+      // Rename first: yaam moves the config and the Keychain password to the
+      // new name in one step and refuses a name that is already taken.
+      if (renameFrom !== null) {
+        await api('POST', `/api/connections/${enc(renameFrom)}/rename`, { name })
+        setSavedName(name)
+        followRename(renameFrom, name)
+      }
       await api('PUT', `/api/connections/${enc(name)}`, body)
       api('POST', `/api/connections/${enc(name)}/test`).catch(() => {})
       onClose()
@@ -221,12 +233,12 @@ function ConnectionDialog({
   }
 
   const remove = async () => {
-    if (!existing) return
-    if (!window.confirm(`Delete Connection ${existing.name}? Its saved password is removed from the Keychain too.`)) return
+    if (savedName === null) return
+    if (!window.confirm(`Delete Connection ${savedName}? Its saved password is removed from the Keychain too.`)) return
     setBusy(true)
     setError('')
     try {
-      await api('DELETE', `/api/connections/${enc(existing.name)}`)
+      await api('DELETE', `/api/connections/${enc(savedName)}`)
       onClose()
     } catch (err) {
       setError((err as Error).message)
@@ -243,7 +255,7 @@ function ConnectionDialog({
           <input
             id="c-name"
             value={name}
-            disabled={!!existing}
+            spellCheck={false}
             placeholder="shop-dev"
             autoFocus={!existing}
             onChange={(e) => setName(e.target.value)}

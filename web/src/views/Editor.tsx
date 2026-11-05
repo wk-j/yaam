@@ -6,7 +6,7 @@ import { RUN_KEYS, SqlEditor } from '../editor/SqlEditor'
 import { ResultGrid, buildChanges, type Edits } from '../editor/ResultGrid'
 import type { Connection, EditsResponse, RunResult, Schema } from '../types'
 import { SqlBlock } from '../sql'
-import { useStoredFlag } from '../prefs'
+import { sqlDocKey, useStoredFlag } from '../prefs'
 import {
   IconButton,
   IconChevronRight,
@@ -22,8 +22,6 @@ import {
   IconView,
   InfoTip,
 } from '../icons'
-
-const docKey = (conn: string) => `yaam.sql.${conn}`
 
 export function Editor({ connection }: { connection?: Connection }) {
   const name = connection?.name ?? ''
@@ -44,7 +42,7 @@ export function Editor({ connection }: { connection?: Connection }) {
 
   // A new Connection starts clean: its own SQL text, schema and no result.
   useEffect(() => {
-    doc.current = name ? (localStorage.getItem(docKey(name)) ?? '') : ''
+    doc.current = name ? (localStorage.getItem(sqlDocKey(name)) ?? '') : ''
     setResult(null)
     setEdits({})
     setRunError('')
@@ -154,11 +152,11 @@ export function Editor({ connection }: { connection?: Connection }) {
       <div className="work">
         <SqlEditor
           key={name}
-          initialDoc={localStorage.getItem(docKey(name)) ?? ''}
+          initialDoc={localStorage.getItem(sqlDocKey(name)) ?? ''}
           schema={schema}
           onChange={(d) => {
             doc.current = d
-            localStorage.setItem(docKey(name), d)
+            localStorage.setItem(sqlDocKey(name), d)
           }}
           onRun={() => run(doc.current)}
         />

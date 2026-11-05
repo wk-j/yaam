@@ -19,7 +19,7 @@ import {
   IconSun,
 } from './icons'
 import { useTheme, type ThemePref } from './theme'
-import { useStoredFlag } from './prefs'
+import { RENAMED_EVENT, SELECTED_CONNECTION_KEY, useStoredFlag } from './prefs'
 import { Editor } from './views/Editor'
 import { Approvals, NotifyToggle } from './views/Approvals'
 import { AgentLog } from './views/AgentLog'
@@ -43,8 +43,6 @@ function readRoute(): Route {
   return VIEWS.some((v) => v.route === r) ? (r as Route) : 'editor'
 }
 
-const CONN_KEY = 'yaam.connection'
-
 export function NoToken({ expired = false }: { expired?: boolean }) {
   return (
     <div className="notoken">
@@ -61,7 +59,7 @@ export function App() {
   const [state, setState] = useState<AppState | null>(null)
   const [live, setLive] = useState(false)
   const [route, setRoute] = useState<Route>(readRoute)
-  const [conn, setConnRaw] = useState<string>(() => localStorage.getItem(CONN_KEY) ?? '')
+  const [conn, setConnRaw] = useState<string>(() => localStorage.getItem(SELECTED_CONNECTION_KEY) ?? '')
   const seenPending = useRef<Set<string> | null>(null)
   const [narrow, toggleNarrow] = useStoredFlag('yaam.sidebar.collapsed')
 
@@ -69,6 +67,16 @@ export function App() {
     const onHash = () => setRoute(readRoute())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  // A renamed Connection stays selected under its new name.
+  useEffect(() => {
+    const onRename = (e: Event) => {
+      const { from, to } = (e as CustomEvent<{ from: string; to: string }>).detail
+      setConnRaw((cur) => (cur === from ? to : cur))
+    }
+    window.addEventListener(RENAMED_EVENT, onRename)
+    return () => window.removeEventListener(RENAMED_EVENT, onRename)
   }, [])
 
   useEffect(
@@ -88,7 +96,7 @@ export function App() {
   )
 
   const setConn = (name: string) => {
-    localStorage.setItem(CONN_KEY, name)
+    localStorage.setItem(SELECTED_CONNECTION_KEY, name)
     setConnRaw(name)
   }
 

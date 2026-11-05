@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -36,6 +37,7 @@ func (a *App) Handler(token string, hosts []string) http.Handler {
 	mux.HandleFunc("PUT /api/connections/{name}", a.putConnection)
 	mux.HandleFunc("DELETE /api/connections/{name}", a.deleteConnection)
 	mux.HandleFunc("POST /api/connections/{name}/test", a.testConnection)
+	mux.HandleFunc("POST /api/connections/{name}/rename", a.renameConnection)
 	mux.HandleFunc("GET /api/connections/{name}/schema", a.schema)
 	mux.HandleFunc("POST /api/connections/{name}/run", a.run)
 	mux.HandleFunc("POST /api/connections/{name}/edits", a.edits)
@@ -221,6 +223,89 @@ func (a *App) deleteConnection(w http.ResponseWriter, r *http.Request) {
 	a.db.Invalidate(name)
 	a.publishState()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+var errNameTaken = errors.New("a Connection with that name already exists")
+
+// renameConnection moves a Connection and its Keychain password to a new
+// name in one step; it never overwrites an existing Connection.
+func (a *App) renameConnection(w http.ResponseWriter, r *http.Request) {
+	old, _, ok := a.lookup(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if !readJSON(w, r, maxBody, &body) {
+		return
+	}
+	if !connectionName.MatchString(body.Name) {
+		writeError(w, http.StatusBadRequest, "invalid Connection name: use a-z, 0-9, _ and -, starting with a letter or digit, up to 63 characters")
+		return
+	}
+	if body.Name == old {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	a.mu.Lock()
+	err := a.moveConnection(old, body.Name)
+	a.mu.Unlock()
+	switch {
+	case errors.Is(err, errNameTaken):
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	a.db.Invalidate(old)
+	a.publishState()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// moveConnection copies the password to name, saves the config with the
+// Connection under name, then removes the old password; a failure before
+// the config is saved leaves everything under old. Callers hold a.mu.
+func (a *App) moveConnection(old, name string) error {
+	c, ok := a.cfg.Connections[old]
+	if !ok {
+		return errUnknownConnection(old)
+	}
+	if _, taken := a.cfg.Connections[name]; taken {
+		return errNameTaken
+	}
+	password, err := a.keys.Get(old)
+	hasPassword := err == nil
+	if err != nil && !errors.Is(err, keychain.ErrNotFound) {
+		return err
+	}
+	if hasPassword {
+		if err := a.keys.Set(name, password); err != nil {
+			return err
+		}
+	}
+	next := a.cloneConfig()
+	next.Connections[name] = c
+	delete(next.Connections, old)
+	if err := a.saveConfig(next); err != nil {
+		if hasPassword {
+			a.keys.Delete(name)
+		}
+		return err
+	}
+	a.password[name] = hasPassword
+	delete(a.password, old)
+	if s, ok := a.status[old]; ok {
+		a.status[name] = s
+		delete(a.status, old)
+	}
+	if hasPassword {
+		if err := a.keys.Delete(old); err != nil {
+			return fmt.Errorf("renamed, but the password stored under %q could not be removed from the Keychain: %w", old, err)
+		}
+	}
+	return nil
 }
 
 func (a *App) testConnection(w http.ResponseWriter, r *http.Request) {
