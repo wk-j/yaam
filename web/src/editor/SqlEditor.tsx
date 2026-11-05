@@ -11,20 +11,21 @@ import type { Schema } from '../types'
 export const RUN_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘↵' : 'Ctrl+↵'
 
 const theme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'var(--code-bg)', color: 'var(--fg)', fontSize: '13px' },
+  // Transparent so the recessed .sql well (styles.css) shows its inner shadow.
+  '&': { height: '100%', backgroundColor: 'transparent', color: 'var(--fg)', fontSize: '13px' },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '1.5' },
   '.cm-content': { caretColor: 'var(--accent)' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent)' },
-  '.cm-gutters': { backgroundColor: 'var(--code-bg)', color: 'var(--muted)', border: 'none' },
+  '.cm-gutters': { background: 'var(--gutter)', color: 'var(--muted)', border: 'none', borderRight: '1px solid var(--gutter-edge)' },
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, var(--fg) 5%, transparent)' },
   '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection': {
     backgroundColor: 'color-mix(in srgb, var(--accent) 28%, transparent)',
   },
   '.cm-matchingBracket': { backgroundColor: 'color-mix(in srgb, var(--accent) 25%, transparent)', outline: 'none' },
-  '.cm-tooltip': { backgroundColor: 'var(--card)', color: 'var(--fg)', border: '1px solid var(--border)' },
+  '.cm-tooltip': { backgroundColor: 'var(--card)', color: 'var(--fg)', border: '1px solid var(--edge)', boxShadow: 'var(--shadow-panel)' },
   '.cm-tooltip-autocomplete > ul': { fontFamily: 'var(--mono)', fontSize: '12.5px' },
-  '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--accent)', color: '#181a20' },
+  '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--accent)', color: 'var(--on-accent)' },
   '.cm-completionDetail': { color: 'var(--muted)', fontStyle: 'normal', marginLeft: '1em' },
   '.cm-panels': { backgroundColor: 'var(--card)', color: 'var(--fg)' },
 })
