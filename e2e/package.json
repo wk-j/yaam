@@ -1,0 +1,15 @@
+{
+  "name": "yaam-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test runner.test.mjs",
+    "list": "node runner.mjs list",
+    "run": "node runner.mjs run web-query-happy-path",
+    "history": "node runner.mjs history"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "pg": "8.23.1"
+  }
+}

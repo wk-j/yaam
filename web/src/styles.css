@@ -1082,7 +1082,15 @@ input:disabled {
   border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 .grid-head .gc {
-  line-height: 27px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 18px;
+}
+.grid-head .col-name,
+.grid-head .ty {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .gc.lead {
   padding: 0;

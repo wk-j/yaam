@@ -9,7 +9,7 @@ export function ExecutionLog({ limit }: { limit: number }) {
 
   return (
     <>
-      <table className="log">
+      <table data-testid="execution-log" className="log">
         <thead>
           <tr>
             <th className="chev-cell">
@@ -70,18 +70,18 @@ export function ExecutionLog({ limit }: { limit: number }) {
                 )}
               </td>
               <td>
-                <div className="trunc mono cell-conn" title={e.connection}>
+                <div data-testid="execution-log-connection" className="trunc mono cell-conn" title={e.connection}>
                   {e.connection}
                 </div>
               </td>
               <td className="fill mono">
-                <div className="trunc" title={e.sql}>
+                <div data-testid="execution-log-sql" className="trunc" title={e.sql}>
                   <SqlText sql={e.sql.slice(0, CELL_SQL_MAX)} />
                 </div>
               </td>
               <td className="nowrap">{fmtDuration(e.durationMs)}</td>
               <td className="nowrap">{e.rows == null ? '—' : fmtCount(e.rows)}</td>
-              <td className="nowrap">
+              <td data-testid="execution-log-status" className="nowrap">
                 {e.error ? (
                   <span className="pill fail" title={e.error}>
                     error

@@ -70,6 +70,7 @@ export function SqlEditor({
       extensions: [
         Prec.highest(keymap.of([{ key: 'Mod-Enter', run: (v) => (closeCompletion(v), handlers.current.onRun(), true) }])),
         basicSetup,
+        EditorView.contentAttributes.of({ 'data-testid': 'sql-editor-input', 'aria-label': 'SQL editor' }),
         theme,
         placeholder(`Write SQL, then press ${RUN_KEYS} to run`),
         syntaxHighlighting(sqlHighlighter),

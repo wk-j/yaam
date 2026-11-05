@@ -161,7 +161,7 @@ export function Editor({ connection }: { connection?: Connection }) {
           onRun={() => run(doc.current)}
         />
         <div className="toolbar">
-          <button className="btn pri" disabled={running} onClick={() => run(doc.current)}>
+          <button data-testid="editor-run" className="btn pri" disabled={running} onClick={() => run(doc.current)}>
             <IconPlay size={13} />
             {running ? 'Running…' : `Run ${RUN_KEYS}`}
           </button>
@@ -192,8 +192,8 @@ export function Editor({ connection }: { connection?: Connection }) {
             </button>
           </div>
         )}
-        <div className="results">
-          {runError && <div className="errbox">{runError}</div>}
+        <div data-testid="editor-results" className="results">
+          {runError && <div data-testid="editor-sql-error" className="errbox">{runError}</div>}
           {result?.statements.map((s, i) => (
             <section key={i} className={`stmt-res${withRows === 1 && s.columns.length > 0 ? ' fill' : ''}`}>
               <div className="stmt-head">
@@ -211,7 +211,7 @@ export function Editor({ connection }: { connection?: Connection }) {
               )}
             </section>
           ))}
-          {result?.error && <div className="errbox">{result.error}</div>}
+          {result?.error && <div data-testid="editor-sql-error" className="errbox">{result.error}</div>}
           {result && result.notices.length > 0 && (
             <ul className="notices">
               {result.notices.map((n, i) => (

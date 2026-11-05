@@ -27,7 +27,7 @@ export function Connections({ connections }: { connections: Connection[] }) {
   return (
     <>
       <div className="view-actions">
-        <button className="btn pri sm" onClick={() => setEditing('new')}>
+        <button data-testid="connection-add" className="btn pri sm" onClick={() => setEditing('new')}>
           <IconPlus size={14} />
           Add Connection
         </button>
@@ -86,7 +86,7 @@ function ConnectionRow({ c, onEdit }: { c: Connection; onEdit: () => void }) {
   const testNote = test && (test.ok ? 'Test passed: connected and ran SELECT 1.' : test.error !== statusError ? `Test failed: ${test.error}` : '')
 
   return (
-    <li className={`crow${open ? ' open' : ''}`}>
+    <li data-testid="connection-row" className={`crow${open ? ' open' : ''}`}>
       <div className="crow-main">
         <StatusIcon c={c} />
         <div className="crow-text" onClick={() => setOpen(!open)}>
@@ -103,11 +103,11 @@ function ConnectionRow({ c, onEdit }: { c: Connection; onEdit: () => void }) {
               {statusError}
             </div>
           )}
-          {testNote && <div className={`small trunc ${test?.ok ? 'good' : 'err'}`} title={testNote}>{testNote}</div>}
+          {testNote && <div data-testid="connection-test-result" className={`small trunc ${test?.ok ? 'good' : 'err'}`} title={testNote}>{testNote}</div>}
           {error && <div className="err small wrap">{error}</div>}
         </div>
         <div className="crow-act">
-          <IconButton label={testing ? 'Testing…' : 'Test Connection'} className={testing ? 'busy' : ''} disabled={testing} onClick={runTest}>
+          <IconButton data-testid="connection-test" label={testing ? 'Testing…' : 'Test Connection'} className={testing ? 'busy' : ''} disabled={testing} onClick={runTest}>
             <IconPlug />
           </IconButton>
           <CopyButton text={mcpLine(c.name)} label="Copy .mcp.json entry" onError={setError} />
@@ -329,7 +329,7 @@ function ConnectionDialog({
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn pri" disabled={busy}>
+          <button data-testid="connection-save" type="submit" className="btn pri" disabled={busy}>
             {existing ? 'Save and test' : 'Add and test'}
           </button>
         </div>

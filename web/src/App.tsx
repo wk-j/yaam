@@ -129,7 +129,7 @@ export function App() {
         </div>
         <nav className="nav">
           {VIEWS.map(({ route: r, title: t, Icon }) => (
-            <button key={r} aria-current={route === r} title={narrow ? t : undefined} onClick={() => go(r)}>
+            <button key={r} data-testid={`nav-${r}`} aria-current={route === r} title={narrow ? t : undefined} onClick={() => go(r)}>
               <Icon />
               <span className="nav-label">{t}</span>
               {r === 'approvals' && state.pending.length > 0 && (
@@ -145,6 +145,7 @@ export function App() {
           {connections.map((c) => (
             <button
               key={c.name}
+              data-testid="sidebar-connection"
               className="conn"
               aria-current={route === 'editor' && current?.name === c.name}
               title={c.status === 'error' ? `${c.name}: ${c.statusError}` : `${c.name} · ${c.host}:${c.port}/${c.database}`}
@@ -178,7 +179,7 @@ export function App() {
           {route === 'editor' && connections.length > 0 && (
             <label className="muted bar-ctx">
               Connection{' '}
-              <select className="mono" value={current?.name ?? ''} onChange={(e) => setConn(e.target.value)}>
+              <select data-testid="editor-connection" className="mono" value={current?.name ?? ''} onChange={(e) => setConn(e.target.value)}>
                 {connections.map((c) => (
                   <option key={c.name} value={c.name}>
                     {c.name}

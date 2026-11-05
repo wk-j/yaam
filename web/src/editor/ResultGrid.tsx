@@ -12,7 +12,7 @@ export interface RowEdit {
 export type Edits = Record<number, RowEdit>
 
 const ROW_H = 24
-const HEAD_H = 28
+const HEAD_H = 42
 const DEL_W = 28
 const CHAR_W = 7.6
 const SCROLLBAR = 14
@@ -25,8 +25,8 @@ function columnWidths(stmt: StatementResult): number[] {
   const sample = stmt.rows.slice(0, 200)
   for (let r = 200; r < n; r += step) sample.push(stmt.rows[r])
   return stmt.columns.map((c, i) => {
-    // Header shows "name type" with the type in a smaller font (~90% width).
-    let chars = c.name.length + 2 + Math.ceil(c.type.length * 0.9)
+    // Name and type are stacked; only the wider line determines header width.
+    let chars = Math.max(c.name.length, Math.ceil(c.type.length * 0.9))
     for (const r of sample) {
       const v = r[i]
       chars = Math.max(chars, v == null ? 4 : v.length)
@@ -128,7 +128,8 @@ export function ResultGrid({
           {editable && <div className="gc lead" style={{ width: DEL_W }} />}
           {stmt.columns.map((c, i) => (
             <div key={i} className="gc" style={{ width: widths[i] }} title={`${c.name} ${c.type}`}>
-              {c.name} <span className="ty">{c.type}</span>
+              <span data-testid="result-column-name" className="col-name">{c.name}</span>
+              <span className="ty">{c.type}</span>
             </div>
           ))}
         </div>
@@ -162,6 +163,7 @@ export function ResultGrid({
                 return (
                   <div
                     key={ci}
+                    data-testid="result-cell"
                     className={`gc${v == null ? ' null' : ''}${changed ? ' chg' : ''}${editableCell ? ' ed' : ''}`}
                     style={{ width: widths[ci] }}
                     title={v ?? 'NULL'}
