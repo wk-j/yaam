@@ -1,7 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, basicSetup } from 'codemirror'
-import { closeCompletion } from '@codemirror/autocomplete'
-import { keymap, placeholder } from '@codemirror/view'
+import {
+  acceptCompletion,
+  autocompletion,
+  closeCompletion,
+  completionStatus,
+  selectedCompletionIndex,
+  setSelectedCompletion,
+} from '@codemirror/autocomplete'
+import { keymap, placeholder, type Command } from '@codemirror/view'
 import { Compartment, Prec } from '@codemirror/state'
 import { syntaxHighlighting } from '@codemirror/language'
 import { PostgreSQL, sql, type SQLNamespace } from '@codemirror/lang-sql'
@@ -44,6 +51,18 @@ function namespace(schema: Schema | null): SQLNamespace {
   return ns
 }
 
+// Completion must not take keys meant for the text: the list opens with
+// nothing chosen, so Enter still ends the line. Arrow keys choose an option
+// for Enter; Tab takes the chosen option, or the first one.
+const completion = autocompletion({ selectOnOpen: false })
+
+const acceptWithTab: Command = (view) => {
+  if (completionStatus(view.state) !== 'active') return false
+  if (selectedCompletionIndex(view.state) === null) view.dispatch({ effects: setSelectedCompletion(0) })
+  acceptCompletion(view)
+  return true
+}
+
 const sqlLang = (schema: Schema | null) => sql({ dialect: PostgreSQL, schema: namespace(schema), defaultSchema: 'public' })
 
 export function SqlEditor({
@@ -68,8 +87,14 @@ export function SqlEditor({
       parent: host.current!,
       doc: initialDoc,
       extensions: [
-        Prec.highest(keymap.of([{ key: 'Mod-Enter', run: (v) => (closeCompletion(v), handlers.current.onRun(), true) }])),
+        Prec.highest(
+          keymap.of([
+            { key: 'Mod-Enter', run: (v) => (closeCompletion(v), handlers.current.onRun(), true) },
+            { key: 'Tab', run: acceptWithTab },
+          ]),
+        ),
         basicSetup,
+        completion,
         EditorView.contentAttributes.of({ 'data-testid': 'sql-editor-input', 'aria-label': 'SQL editor' }),
         theme,
         placeholder(`Write SQL, then press ${RUN_KEYS} to run`),
