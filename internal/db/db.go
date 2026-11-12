@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,11 +109,18 @@ func quoteDSN(v string) string {
 	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(v) + "'"
 }
 
+// sameLink reports whether a pool built for a also serves b. Tags only sort
+// Connections in the web UI, so a Tag change keeps the pool.
+func sameLink(a, b config.Connection) bool {
+	a.Tags, b.Tags = nil, nil
+	return reflect.DeepEqual(a, b)
+}
+
 func (m *Manager) pool(name string, c config.Connection) (*pool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if p := m.pools[name]; p != nil {
-		if p.cfg == c {
+		if sameLink(p.cfg, c) {
 			return p, nil
 		}
 		go p.p.Close()

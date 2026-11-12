@@ -29,6 +29,9 @@ type Connection struct {
 	Role                string `toml:"role"`
 	SSLMode             string `toml:"sslmode"`
 	AgentTimeoutSeconds int    `toml:"agent_timeout_seconds"`
+	// Tags sort Connections into groups in the web UI; yaam saves them
+	// already normalized (see app.normalizeTags) and never changes them in place.
+	Tags []string `toml:"tags,omitempty"`
 }
 
 type Config struct {

@@ -16,6 +16,10 @@ _Avoid_: client, operator
 A named database that yaam can reach, together with the role it signs in as, such as `shop-dev`. Users and Agents use the same Connections.
 _Avoid_: data source, source, DSN (only one way to write an address), database (one server holds many databases)
 
+**Tag**:
+A short word a User gives a Connection, such as `prod` or `shop`, to sort Connections into groups; a Connection has any number of Tags, including none.
+_Avoid_: category (suggests one per Connection), group (the set of Connections that share a Tag), label, folder
+
 **Request**:
 The SQL an Agent sends to yaam in one call, with its Purpose; the SQL runs as one whole or not at all.
 _Avoid_: query (one Request can hold several statements), transaction (the database's own unit; a Request runs as one), call

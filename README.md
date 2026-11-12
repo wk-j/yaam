@@ -26,7 +26,8 @@ yaam open       # opens the web UI
 ## Use
 
 1. In the web UI, **Connections → Add Connection**: name (such as `shop-dev`), host, port, database, role,
-   password.
+   password. Optional Tags (such as `prod, shop`) group Connections in the sidebar and filter the Connections
+   page; a Connection with two Tags shows in both groups.
 2. Give a project's agents that Connection: copy the line from the Connection into the project's `.mcp.json`.
 
    ```json

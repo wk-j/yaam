@@ -20,9 +20,35 @@ import { followRename } from '../prefs'
 
 const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/
 const SSLMODES: SslMode[] = ['disable', 'require', 'verify-ca', 'verify-full']
+// The same limits yaam checks when it saves a Connection.
+const MAX_TAGS = 10
+const MAX_TAG_LEN = 32
+
+// allTags lists every Tag in use, sorted.
+export function allTags(connections: Connection[]): string[] {
+  return [...new Set(connections.flatMap((c) => c.tags))].sort((a, b) => a.localeCompare(b))
+}
+
+// parseTags reads the comma-separated Tags field the way yaam saves it:
+// trimmed, lowercased, without empties or repeats.
+function parseTags(text: string): string[] {
+  const tags = text.split(',').map((t) => t.trim().split(/\s+/).join(' ').toLowerCase())
+  return [...new Set(tags.filter((t) => t !== ''))]
+}
+
+// Filter value for Connections that have no Tag; a real Tag never holds a comma.
+const UNTAGGED = ','
 
 export function Connections({ connections }: { connections: Connection[] }) {
   const [editing, setEditing] = useState<Connection | 'new' | null>(null)
+  const [filter, setFilter] = useState('')
+
+  const tags = allTags(connections)
+  const hasUntagged = connections.some((c) => c.tags.length === 0)
+  // A Tag that is no longer used shows every Connection again.
+  const active = filter === UNTAGGED ? (hasUntagged ? filter : '') : tags.includes(filter) ? filter : ''
+  const shown =
+    active === '' ? connections : connections.filter((c) => (active === UNTAGGED ? c.tags.length === 0 : c.tags.includes(active)))
 
   return (
     <>
@@ -32,9 +58,26 @@ export function Connections({ connections }: { connections: Connection[] }) {
           Add Connection
         </button>
       </div>
-      {connections.length > 0 && (
+      {tags.length > 0 && (
+        <div className="filters" role="group" aria-label="Show Connections by Tag" data-testid="connection-tag-filter">
+          <button className="chip" aria-pressed={active === ''} onClick={() => setFilter('')}>
+            All Tags
+          </button>
+          {tags.map((t) => (
+            <button key={t} className="chip" aria-pressed={active === t} onClick={() => setFilter(t)}>
+              {t}
+            </button>
+          ))}
+          {hasUntagged && (
+            <button className="chip" aria-pressed={active === UNTAGGED} onClick={() => setFilter(UNTAGGED)}>
+              Untagged
+            </button>
+          )}
+        </div>
+      )}
+      {shown.length > 0 && (
         <ul className="conns">
-          {connections.map((c) => (
+          {shown.map((c) => (
             <ConnectionRow key={c.name} c={c} onEdit={() => setEditing(c)} />
           ))}
         </ul>
@@ -44,6 +87,7 @@ export function Connections({ connections }: { connections: Connection[] }) {
         <ConnectionDialog
           existing={editing === 'new' ? null : editing}
           taken={connections.map((c) => c.name)}
+          knownTags={tags}
           onClose={() => setEditing(null)}
         />
       )}
@@ -94,6 +138,15 @@ function ConnectionRow({ c, onEdit }: { c: Connection; onEdit: () => void }) {
             <strong className="mono crow-name" title={c.name}>
               {c.name}
             </strong>
+            {c.tags.length > 0 && (
+              <span data-testid="connection-tags" className="ctags" title={`Tags: ${c.tags.join(', ')}`}>
+                {c.tags.map((t) => (
+                  <span key={t} className="pill ctag">
+                    {t}
+                  </span>
+                ))}
+              </span>
+            )}
             <span className="mono muted trunc" title={summary}>
               {summary}
             </span>
@@ -164,16 +217,37 @@ function ConnectionRow({ c, onEdit }: { c: Connection; onEdit: () => void }) {
   )
 }
 
+// TagSuggestions offers the Tags other Connections use, so one group keeps
+// one spelling.
+function TagSuggestions({ known, text, onPick }: { known: string[]; text: string; onPick: (text: string) => void }) {
+  const current = parseTags(text)
+  const rest = known.filter((t) => !current.includes(t))
+  if (rest.length === 0) return null
+  return (
+    <div className="row tag-suggest">
+      {rest.map((t) => (
+        <button key={t} type="button" className="btn sm" aria-label={`Add Tag ${t}`} onClick={() => onPick([...current, t].join(', '))}>
+          <IconPlus size={12} />
+          {t}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ConnectionDialog({
   existing,
   taken,
+  knownTags,
   onClose,
 }: {
   existing: Connection | null
   taken: string[]
+  knownTags: string[]
   onClose: () => void
 }) {
   const [name, setName] = useState(existing?.name ?? '')
+  const [tagText, setTagText] = useState(existing?.tags.join(', ') ?? '')
   const [host, setHost] = useState(existing?.host ?? 'localhost')
   const [port, setPort] = useState(String(existing?.port ?? 5432))
   const [database, setDatabase] = useState(existing?.database ?? '')
@@ -200,6 +274,10 @@ function ConnectionDialog({
     if (!database.trim()) return setError('Database is required.')
     if (!role.trim()) return setError('Role is required.')
     if (!Number.isInteger(timeoutN) || timeoutN < 1) return setError('Agent time limit must be a whole number of seconds.')
+    const tags = parseTags(tagText)
+    if (tags.length > MAX_TAGS) return setError(`Tags: up to ${MAX_TAGS}.`)
+    const long = tags.find((t) => [...t].length > MAX_TAG_LEN)
+    if (long) return setError(`Tag "${long}" is longer than ${MAX_TAG_LEN} characters.`)
 
     const body: Record<string, unknown> = {
       host: host.trim(),
@@ -208,6 +286,7 @@ function ConnectionDialog({
       role: role.trim(),
       sslmode,
       agentTimeoutSeconds: timeoutN,
+      tags,
     }
     // Absent password keeps the saved one; "" removes it.
     if (removePassword) body.password = ''
@@ -261,6 +340,17 @@ function ConnectionDialog({
             onChange={(e) => setName(e.target.value)}
           />
           <span className="hint">Projects name it in .mcp.json: yaam mcp &lt;name&gt;</span>
+          <label htmlFor="c-tags">Tags</label>
+          <input
+            id="c-tags"
+            data-testid="connection-tags-input"
+            value={tagText}
+            spellCheck={false}
+            placeholder="prod, shop"
+            onChange={(e) => setTagText(e.target.value)}
+          />
+          <span className="hint">Separate with commas; saved in lowercase. Tags group Connections in the sidebar.</span>
+          <TagSuggestions known={knownTags} text={tagText} onPick={setTagText} />
           <label htmlFor="c-host">Host</label>
           <input id="c-host" value={host} placeholder="localhost" onChange={(e) => setHost(e.target.value)} />
           <label htmlFor="c-port">Port</label>

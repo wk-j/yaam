@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/wk-j/yaam/internal/approval"
 	"github.com/wk-j/yaam/internal/config"
@@ -26,6 +29,36 @@ const (
 var connectionName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 
 var sslModes = map[string]bool{"disable": true, "require": true, "verify-ca": true, "verify-full": true}
+
+const (
+	maxTags   = 10
+	maxTagLen = 32 // characters, not bytes, so a Thai Tag gets the same room
+)
+
+// normalizeTags trims, lowercases and de-duplicates a Connection's Tags,
+// keeping the User's order; it refuses a Tag that cannot be written back in
+// the comma-separated Tags field.
+func normalizeTags(in []string) ([]string, error) {
+	var out []string
+	for _, t := range in {
+		t = strings.ToLower(strings.Join(strings.Fields(t), " "))
+		switch {
+		case t == "" || slices.Contains(out, t):
+			continue
+		case strings.ContainsRune(t, ','):
+			return nil, errors.New("a Tag cannot contain a comma")
+		case utf8.RuneCountInString(t) > maxTagLen:
+			return nil, fmt.Errorf("a Tag may be up to %d characters", maxTagLen)
+		case strings.IndexFunc(t, func(r rune) bool { return !unicode.IsPrint(r) }) >= 0:
+			return nil, errors.New("a Tag must be printable text")
+		}
+		out = append(out, t)
+	}
+	if len(out) > maxTags {
+		return nil, fmt.Errorf("a Connection may have up to %d Tags", maxTags)
+	}
+	return out, nil
+}
 
 // Handler is the web UI and its API. hosts are the Host header values the
 // listener answers to; token is the per-run bearer token (ADR 0002).
@@ -125,20 +158,27 @@ func (a *App) putConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Host                string  `json:"host"`
-		Port                int     `json:"port"`
-		Database            string  `json:"database"`
-		Role                string  `json:"role"`
-		SSLMode             string  `json:"sslmode"`
-		AgentTimeoutSeconds int     `json:"agentTimeoutSeconds"`
-		Password            *string `json:"password"`
+		Host                string   `json:"host"`
+		Port                int      `json:"port"`
+		Database            string   `json:"database"`
+		Role                string   `json:"role"`
+		SSLMode             string   `json:"sslmode"`
+		AgentTimeoutSeconds int      `json:"agentTimeoutSeconds"`
+		Tags                []string `json:"tags"`
+		Password            *string  `json:"password"`
 	}
 	if !readJSON(w, r, maxBody, &body) {
+		return
+	}
+	tags, err := normalizeTags(body.Tags)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	c := config.Connection{
 		Host: strings.TrimSpace(body.Host), Port: body.Port, Database: strings.TrimSpace(body.Database),
 		Role: strings.TrimSpace(body.Role), SSLMode: body.SSLMode, AgentTimeoutSeconds: body.AgentTimeoutSeconds,
+		Tags: tags,
 	}
 	if c.Port == 0 {
 		c.Port = config.DefaultPort
@@ -168,7 +208,7 @@ func (a *App) putConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.mu.Lock()
-	err := a.storeConnection(name, c, body.Password)
+	err = a.storeConnection(name, c, body.Password)
 	a.mu.Unlock()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

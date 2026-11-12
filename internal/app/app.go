@@ -116,16 +116,17 @@ func (a *App) connection(name string) (config.Connection, bool) {
 func now() string { return time.Now().Format(time.RFC3339) }
 
 type connectionView struct {
-	Name                string `json:"name"`
-	Host                string `json:"host"`
-	Port                int    `json:"port"`
-	Database            string `json:"database"`
-	Role                string `json:"role"`
-	SSLMode             string `json:"sslmode"`
-	AgentTimeoutSeconds int    `json:"agentTimeoutSeconds"`
-	HasPassword         bool   `json:"hasPassword"`
-	Status              string `json:"status"`
-	StatusError         string `json:"statusError"`
+	Name                string   `json:"name"`
+	Host                string   `json:"host"`
+	Port                int      `json:"port"`
+	Database            string   `json:"database"`
+	Role                string   `json:"role"`
+	SSLMode             string   `json:"sslmode"`
+	AgentTimeoutSeconds int      `json:"agentTimeoutSeconds"`
+	Tags                []string `json:"tags"`
+	HasPassword         bool     `json:"hasPassword"`
+	Status              string   `json:"status"`
+	StatusError         string   `json:"statusError"`
 }
 
 type settingsView struct {
@@ -171,7 +172,8 @@ func (a *App) state() stateView {
 		}
 		s.Connections = append(s.Connections, connectionView{
 			Name: name, Host: c.Host, Port: c.Port, Database: c.Database, Role: c.Role, SSLMode: c.SSLMode,
-			AgentTimeoutSeconds: c.AgentTimeoutSeconds, HasPassword: has, Status: st.status, StatusError: st.err,
+			AgentTimeoutSeconds: c.AgentTimeoutSeconds, Tags: append([]string{}, c.Tags...), HasPassword: has,
+			Status: st.status, StatusError: st.err,
 		})
 	}
 	for _, ag := range a.agents {

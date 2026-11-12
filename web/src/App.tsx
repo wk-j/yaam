@@ -8,6 +8,7 @@ import {
   IconApprovals,
   IconBrand,
   IconButton,
+  IconChevronRight,
   IconDatabase,
   IconEditor,
   IconExecutionLog,
@@ -19,12 +20,12 @@ import {
   IconSun,
 } from './icons'
 import { useTheme, type ThemePref } from './theme'
-import { RENAMED_EVENT, SELECTED_CONNECTION_KEY, useStoredFlag } from './prefs'
+import { RENAMED_EVENT, SELECTED_CONNECTION_KEY, useStoredFlag, useStoredSet } from './prefs'
 import { Editor } from './views/Editor'
 import { Approvals, NotifyToggle } from './views/Approvals'
 import { AgentLog } from './views/AgentLog'
 import { ExecutionLog } from './views/ExecutionLog'
-import { Connections } from './views/Connections'
+import { allTags, Connections } from './views/Connections'
 import { SettingsView } from './views/Settings'
 
 const VIEWS = [
@@ -62,6 +63,7 @@ export function App() {
   const [conn, setConnRaw] = useState<string>(() => localStorage.getItem(SELECTED_CONNECTION_KEY) ?? '')
   const seenPending = useRef<Set<string> | null>(null)
   const [narrow, toggleNarrow] = useStoredFlag('yaam.sidebar.collapsed')
+  const [closedGroups, toggleGroup] = useStoredSet('yaam.sidebar.closedGroups')
 
   useEffect(() => {
     const onHash = () => setRoute(readRoute())
@@ -114,6 +116,25 @@ export function App() {
 
   const title = VIEWS.find((v) => v.route === route)!.title
   const agents = state.agents.length
+  // The icon rail has no room for group headings, so it lists each Connection once.
+  const groups = narrow ? null : tagGroups(connections)
+
+  const connButton = (c: Connection) => (
+    <button
+      key={c.name}
+      data-testid="sidebar-connection"
+      className="conn"
+      aria-current={route === 'editor' && current?.name === c.name}
+      title={c.status === 'error' ? `${c.name}: ${c.statusError}` : `${c.name} · ${c.host}:${c.port}/${c.database}`}
+      onClick={() => {
+        setConn(c.name)
+        go('editor')
+      }}
+    >
+      <StatusDot c={c} />
+      <span className="trunc conn-name">{c.name}</span>
+    </button>
+  )
 
   return (
     <div className={narrow ? 'app side-collapsed' : 'app'}>
@@ -142,22 +163,34 @@ export function App() {
         </nav>
         <h4>Connections</h4>
         <div className="side-conns">
-          {connections.map((c) => (
-            <button
-              key={c.name}
-              data-testid="sidebar-connection"
-              className="conn"
-              aria-current={route === 'editor' && current?.name === c.name}
-              title={c.status === 'error' ? `${c.name}: ${c.statusError}` : `${c.name} · ${c.host}:${c.port}/${c.database}`}
-              onClick={() => {
-                setConn(c.name)
-                go('editor')
-              }}
-            >
-              <StatusDot c={c} />
-              <span className="trunc conn-name">{c.name}</span>
-            </button>
-          ))}
+          {groups
+            ? groups.map((g, i) => {
+                const key = g.tag ?? UNTAGGED_GROUP
+                const open = !closedGroups.includes(key)
+                const label = g.tag ?? 'Untagged'
+                return (
+                  <div key={key} className="side-group" role="group" aria-label={g.tag === null ? 'Untagged' : `Tag ${g.tag}`}>
+                    <h5>
+                      <button
+                        data-testid="sidebar-group"
+                        className="side-group-head"
+                        aria-expanded={open}
+                        aria-controls={`side-group-${i}`}
+                        title={`${open ? 'Hide' : 'Show'} ${g.tag === null ? 'Connections without a Tag' : `Tag ${g.tag}`}`}
+                        onClick={() => toggleGroup(key)}
+                      >
+                        <IconChevronRight size={12} className="chev-ico" />
+                        <span className="trunc">{label}</span>
+                        <span className="side-group-count">{g.connections.length}</span>
+                      </button>
+                    </h5>
+                    <div id={`side-group-${i}`} hidden={!open}>
+                      {g.connections.map(connButton)}
+                    </div>
+                  </div>
+                )
+              })
+            : connections.map(connButton)}
           {connections.length === 0 && <div className="conn muted">none yet</div>}
         </div>
         <div className="foot">
@@ -220,6 +253,23 @@ export function App() {
       </section>
     </div>
   )
+}
+
+// The closed-group key of the Untagged group; a Tag never holds a comma.
+const UNTAGGED_GROUP = ','
+
+// tagGroups sorts Connections under each of their Tags, then those with none;
+// a Connection with two Tags is in both groups. null: no Connection has a Tag.
+function tagGroups(connections: Connection[]): { tag: string | null; connections: Connection[] }[] | null {
+  const tags = allTags(connections)
+  if (tags.length === 0) return null
+  const groups: { tag: string | null; connections: Connection[] }[] = tags.map((tag) => ({
+    tag,
+    connections: connections.filter((c) => c.tags.includes(tag)),
+  }))
+  const untagged = connections.filter((c) => c.tags.length === 0)
+  if (untagged.length > 0) groups.push({ tag: null, connections: untagged })
+  return groups
 }
 
 export function StatusDot({ c }: { c: Connection }) {

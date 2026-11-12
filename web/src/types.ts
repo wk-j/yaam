@@ -9,6 +9,7 @@ export interface Connection {
   role: string
   sslmode: SslMode
   agentTimeoutSeconds: number
+  tags: string[]
   hasPassword: boolean
   status: ConnectionStatus
   statusError: string
