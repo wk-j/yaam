@@ -31,28 +31,41 @@ export function AgentLog({ limit }: { limit: number }) {
   const [status, setStatus] = useState<AgentLogStatus | ''>('')
 
   const agents = [...new Set(log.entries.map(agentKey))].sort()
-  const shown = log.entries.filter((e) => (!agent || agentKey(e) === agent) && (!status || e.status === status))
+  // An Agent whose entries have all aged out of the log shows every Agent again.
+  const active = agents.includes(agent) ? agent : ''
+  const shown = log.entries.filter((e) => (!active || agentKey(e) === active) && (!status || e.status === status))
 
   return (
     <>
       <div className="filters">
-        <button className="chip" aria-pressed={agent === ''} onClick={() => setAgent('')}>
-          All Agents
-        </button>
-        {agents.map((a) => (
-          <button key={a} className="chip" aria-pressed={agent === a} onClick={() => setAgent(a)}>
-            {a}
+        {/* One entry per Agent and project grows without bound, so it is a
+            dropdown; the five statuses stay one click away. */}
+        <label className="filter-select">
+          <span className="muted">Agent</span>
+          <select
+            data-testid="agent-log-agent-filter"
+            className={active ? 'on' : ''}
+            value={active}
+            onChange={(e) => setAgent(e.target.value)}
+          >
+            <option value="">All Agents</option>
+            {agents.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="seg" role="group" aria-label="Status">
+          <button className="chip" aria-pressed={status === ''} onClick={() => setStatus('')}>
+            All statuses
           </button>
-        ))}
-        <span className="chip-gap" />
-        <button className="chip" aria-pressed={status === ''} onClick={() => setStatus('')}>
-          All statuses
-        </button>
-        {STATUSES.map((s) => (
-          <button key={s} className="chip" aria-pressed={status === s} onClick={() => setStatus(s)}>
-            {s}
-          </button>
-        ))}
+          {STATUSES.map((s) => (
+            <button key={s} className="chip" aria-pressed={status === s} onClick={() => setStatus(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
       <table className="log agent">
         <thead>
